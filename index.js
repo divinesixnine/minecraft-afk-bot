@@ -1,131 +1,82 @@
-"use strict";
-
-const { addLog, getLogs } = require("./logger");
-const mineflayer = require("mineflayer");
-const mcping = require("mc-ping-updated");
-const config = require("./settings.json");
-const express = require("express");
+const mineflayer = require('mineflayer');
+const express = require('express');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-let sessionActive = false;
-let appInstance = null;
-let checkInterval = null;
+// Configuration
+const config = {
+    host: 'thelegions.aternos.me',
+    port: 62129,
+    username: 'FREDDYGOAT',
+    password: 'SoloPlayz',
+    version: '1.21.1' 
+};
 
-// ============================================================
-// WEB DASHBOARD
-// ============================================================
+// Web Dashboard (To keep Render service alive)
 app.get('/', (req, res) => {
-  res.send(`
-    <html>
-      <head><title>System Dashboard</title></head>
-      <body style="background:#0d1117; color:#e6edf3; font-family:sans-serif; text-align:center; padding:50px;">
-        <h1>System Management Dashboard</h1>
-        <p>Status: <span id="status">Checking...</span></p>
-        <p>Monitoring Address: ${config.server.ip}</p>
-        <div id="logs" style="background:#161b22; padding:20px; border-radius:10px; text-align:left; max-height:300px; overflow-y:auto; margin-top:20px;">
-          ${getLogs().map(l => `<div>${l}</div>`).join('')}
-        </div>
-        <script>
-          setInterval(() => {
-            fetch('/health').then(r => r.json()).then(data => {
-              document.getElementById('status').innerText = data.session ? "Session Active (Keeping server awake)" : "Standby (Real players online)";
-            });
-          }, 5000);
-        </script>
-      </body>
-    </html>
-  `);
+    res.send('Service is running. System monitoring active.');
 });
-
-app.get("/health", (req, res) => {
-  res.json({ session: sessionActive });
-});
-
-app.get("/ping", (req, res) => res.send("pong"));
 
 app.listen(PORT, () => {
-  addLog(`[System] Interface active on port ${PORT}`);
-  startMonitoring(); // Start player count monitoring
+    console.log(`Web server listening on port ${PORT}`);
 });
 
-// ============================================================
-// MONITORING & SESSION LOGIC
-// ============================================================
+let bot;
 
-function startMonitoring() {
-  addLog("[System] Player count monitoring started...");
-  
-  checkInterval = setInterval(() => {
-    mcping(config.server.ip, config.server.port, (err, res) => {
-      if (err) {
-        addLog("[Monitor] Server unreachable (likely offline).");
-        return;
-      }
+function initBot() {
+    console.log(`Attempting to connect to ${config.host}:${config.port}...`);
 
-      const playersOnline = res.players.online;
-      addLog(`[Monitor] Online players: ${playersOnline}`);
-
-      // LOGIC: If 0 players, start session. If > 0 players, end session.
-      if (playersOnline === 0 && !sessionActive) {
-        addLog("[Logic] Server empty. Initiating session...");
-        initSession();
-      } else if (playersOnline > 1 && sessionActive) {
-        // Here > 1 because the bot itself is 1 player. 
-        // If players > 1, it means a real player is there.
-        addLog("[Logic] Real player detected. Ending session to save resources...");
-        closeSession();
-      }
+    bot = mineflayer.createBot({
+        host: config.host,
+        port: config.port,
+        username: config.username,
+        version: config.version,
+        hideErrors: false
     });
-  }, 60000); // Check every 1 minute
+
+    bot.on('spawn', () => {
+        console.log('Bot successfully joined the server!');
+        
+        // Wait 3 seconds then login
+        setTimeout(() => {
+            bot.chat(`/login ${config.password}`);
+            console.log('Login command sent.');
+        }, 3000);
+
+        // Anti-AFK: Swings arm every 30 seconds to prevent idle kick
+        setInterval(() => {
+            if (bot) {
+                bot.swingArm();
+                // Optional: random look around
+                bot.look(Math.random() * Math.PI * 2, 0); 
+            }
+        }, 30000);
+    });
+
+    bot.on('chat', (username, message) => {
+        if (username === bot.username) return;
+        console.log(`[Chat] ${username}: ${message}`);
+    });
+
+    bot.on('kicked', (reason) => {
+        const kickReason = JSON.parse(reason);
+        console.log('Bot was kicked. Reason:', kickReason.text || reason);
+    });
+
+    bot.on('error', (err) => {
+        console.log('Connection Error:', err.message);
+        if (err.code === 'ECONNREFUSED') {
+            console.log('Server is offline. Retrying in 60 seconds...');
+        }
+    });
+
+    // Auto Reconnect logic
+    bot.on('end', () => {
+        console.log('Connection lost. Reconnecting in 10 seconds...');
+        setTimeout(initBot, 10000);
+    });
 }
 
-function initSession() {
-  if (sessionActive) return;
-
-  try {
-    appInstance = mineflayer.createBot({
-      host: config.server.ip,
-      port: config.server.port,
-      username: config["bot-account"].username,
-      version: config.server.version || false,
-      hideErrors: true
-    });
-
-    appInstance.on('spawn', () => {
-      sessionActive = true;
-      addLog("[Session] Successfully joined the server.");
-      
-      // Basic AFK movement to prevent internal kick
-      appInstance.setControlState('sneak', true);
-    });
-
-    appInstance.on('end', () => {
-      sessionActive = false;
-      addLog("[Session] Disconnected from server.");
-    });
-
-    appInstance.on('error', (err) => {
-      addLog(`[Error] Session error: ${err.message}`);
-    });
-
-  } catch (e) {
-    addLog(`[Error] Initialization failed: ${e.message}`);
-  }
-}
-
-function closeSession() {
-  if (appInstance) {
-    appInstance.quit();
-    appInstance = null;
-    sessionActive = false;
-  }
-}
-
-// Graceful Shutdown for Render
-process.on("SIGTERM", () => {
-  addLog("[System] Shutdown signal received.");
-  closeSession();
-  process.exit(0);
-});
+// Start the bot
+initBot();
