@@ -4,79 +4,75 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Configuration
+// Web Server for Render
+app.get('/', (req, res) => res.send('Bot System Running'));
+app.listen(PORT, () => console.log(`Web portal active on port ${PORT}`));
+
+// Configuration from your setting.json
 const config = {
     host: 'thelegions.aternos.me',
     port: 62129,
     username: 'FREDDYGOAT',
     password: 'SoloPlayz',
-    version: '1.21.1' 
+    version: '1.20.1' // CHANGED TO 1.20.1 AS PER YOUR JSON
 };
 
-// Web Dashboard (To keep Render service alive)
-app.get('/', (req, res) => {
-    res.send('Service is running. System monitoring active.');
-});
-
-app.listen(PORT, () => {
-    console.log(`Web server listening on port ${PORT}`);
-});
+const messages = [
+    "I'm a regular player",
+    "Subscribe to FREDDY PLAYZ!",
+    "LEGIONS ON TOP"
+];
 
 let bot;
 
-function initBot() {
-    console.log(`Attempting to connect to ${config.host}:${config.port}...`);
-
+function createBot() {
+    console.log(`Connecting to ${config.host}:${config.port} on version ${config.version}...`);
+    
     bot = mineflayer.createBot({
         host: config.host,
         port: config.port,
         username: config.username,
-        version: config.version,
-        hideErrors: false
+        version: config.version
     });
 
     bot.on('spawn', () => {
-        console.log('Bot successfully joined the server!');
+        console.log('Bot joined the game!');
         
-        // Wait 3 seconds then login
+        // 1. Auto Login
         setTimeout(() => {
             bot.chat(`/login ${config.password}`);
-            console.log('Login command sent.');
         }, 3000);
 
-        // Anti-AFK: Swings arm every 30 seconds to prevent idle kick
+        // 2. Anti-AFK & Movement (Random Jump & Sneak)
         setInterval(() => {
-            if (bot) {
-                bot.swingArm();
-                // Optional: random look around
-                bot.look(Math.random() * Math.PI * 2, 0); 
-            }
-        }, 30000);
-    });
+            bot.setControlState('jump', true);
+            setTimeout(() => bot.setControlState('jump', false), 500);
+            bot.setControlState('sneak', true);
+            setTimeout(() => bot.setControlState('sneak', false), 1000);
+        }, 15000);
 
-    bot.on('chat', (username, message) => {
-        if (username === bot.username) return;
-        console.log(`[Chat] ${username}: ${message}`);
-    });
-
-    bot.on('kicked', (reason) => {
-        const kickReason = JSON.parse(reason);
-        console.log('Bot was kicked. Reason:', kickReason.text || reason);
+        // 3. Periodic Chat Messages (Every 7.5 minutes as per your 460s delay)
+        setInterval(() => {
+            const msg = messages[Math.floor(Math.random() * messages.length)];
+            bot.chat(msg);
+        }, 460000);
     });
 
     bot.on('error', (err) => {
-        console.log('Connection Error:', err.message);
-        if (err.code === 'ECONNREFUSED') {
-            console.log('Server is offline. Retrying in 60 seconds...');
+        console.log('Error encountered:', err.message);
+        if (err.code === 'ETIMEDOUT') {
+            console.log('CRITICAL: Connection Timed Out. Check if the Port 62129 is still active in Aternos!');
         }
     });
 
-    // Auto Reconnect logic
     bot.on('end', () => {
-        console.log('Connection lost. Reconnecting in 10 seconds...');
-        setTimeout(initBot, 10000);
+        console.log('Disconnected. Reconnecting in 10 seconds...');
+        setTimeout(createBot, 10000);
+    });
+
+    bot.on('kicked', (reason) => {
+        console.log('Kicked from server. Reason:', reason);
     });
 }
 
-// Start the bot
-initBot();
+createBot();
