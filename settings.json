@@ -1,18 +1,7 @@
 {
-  "name": "Internal AFK Manager",
-  "server": {
-    "host": "blackbear.aternos.host",
-    "port": 62129,
-    "version": "1.20.1"
-  },
-  "bot": {
-    "username": "FREDDYGOAT",
-    "password": "SoloPlayz",
-    "auth": "offline"
-  },
-  "options": {
-    "antiAfk": true,
-    "autoLogin": true,
-    "reconnectDelay": 15000
-  }
+  "host": "blackbear.aternos.host",
+  "port": 62129,
+  "version": "1.20.1",
+  "username": "FREDDYGOAT",
+  "password": "SoloPlayz"
 }
