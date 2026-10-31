@@ -1,18 +1,18 @@
 {
-  "name": "AFK-Bot-Service",
-  "bot-account": {
-    "username": "FREDDYGOAT",
-    "password": "SoloPlayz",
-    "type": "offline"
-  },
+  "name": "Internal AFK Manager",
   "server": {
-    "ip": "blackbear.aternos.host",
+    "host": "blackbear.aternos.host",
     "port": 62129,
     "version": "1.20.1"
   },
-  "utils": {
-    "auto-auth": true,
-    "anti-afk": true,
-    "auto-reconnect": true
+  "bot": {
+    "username": "FREDDYGOAT",
+    "password": "SoloPlayz",
+    "auth": "offline"
+  },
+  "options": {
+    "antiAfk": true,
+    "autoLogin": true,
+    "reconnectDelay": 15000
   }
 }
