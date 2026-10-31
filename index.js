@@ -1,57 +1,78 @@
 const mineflayer = require('mineflayer');
 const express = require('express');
-const fs = require('fs');
 
+// 1. Web Server to keep Render service alive
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('Bot Manager is Live'));
-app.listen(PORT, () => console.log(`[SYSTEM] Web port ${PORT} active`));
 
-// Load settings directly
-const settings = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
+app.get('/', (req, res) => {
+    res.send('AFK Bot Manager is running.');
+});
+
+app.listen(PORT, () => {
+    console.log(`[SYSTEM] Web server active on port ${PORT}`);
+});
+
+// 2. Server Configuration
+const config = {
+    host: 'blackbear.aternos.host',
+    port: 62129,
+    username: 'FREDDYGOAT',
+    password: 'SoloPlayz',
+    version: '1.20.1'
+};
+
+let bot;
 
 function createBot() {
-    console.log(`[BOT] Attempting to join ${settings.host}:${settings.port} as ${settings.username}...`);
+    console.log(`[BOT] Attempting to connect to ${config.host}:${config.port} as ${config.username}...`);
 
-    const bot = mineflayer.createBot({
-        host: settings.host,
-        port: settings.port,
-        username: settings.username,
-        version: settings.version,
-        auth: 'offline',
-        hideErrors: false,
-        checkTimeoutInterval: 30000
+    bot = mineflayer.createBot({
+        host: config.host,
+        port: config.port,
+        username: config.username,
+        version: config.version,
+        auth: 'offline', // Required for Aternos Cracked servers
+        checkTimeoutInterval: 60000
     });
 
-    bot.on('login', () => {
-        console.log("[BOT] Handshake successful! Logging in...");
-    });
-
+    // Successfully joined the server
     bot.on('spawn', () => {
-        console.log("[BOT] SUCCESS: Bot is now in the server!");
+        console.log("[BOT] SUCCESS: Bot has spawned in the server!");
+        
+        // Auto Login Sequence
         setTimeout(() => {
-            bot.chat(`/login ${settings.password}`);
+            bot.chat(`/login ${config.password}`);
+            console.log("[BOT] Login command sent.");
         }, 5000);
     });
 
-    // Anti-AFK
+    // Anti-AFK Logic (Jumps every 20 seconds to prevent idle kick)
     setInterval(() => {
-        if (bot.entity) bot.setControlState('jump', true);
-        setTimeout(() => { if (bot.entity) bot.setControlState('jump', false); }, 500);
+        if (bot && bot.entity) {
+            bot.setControlState('jump', true);
+            setTimeout(() => { 
+                if (bot.entity) bot.setControlState('jump', false); 
+            }, 500);
+        }
     }, 20000);
 
+    // Error Handling
     bot.on('error', (err) => {
-        console.log("[ERROR] Connection failed:", err.message);
+        console.log("[ERROR] Connection Error:", err.message);
     });
 
+    // Kick Handling
     bot.on('kicked', (reason) => {
-        console.log("[KICKED] Reason:", reason);
+        console.log("[KICKED] Bot was kicked from the server. Reason:", reason);
     });
 
+    // Auto Reconnect Logic
     bot.on('end', () => {
-        console.log("[DISCONNECTED] Retrying in 20 seconds...");
+        console.log("[DISCONNECTED] Connection lost. Reconnecting in 20 seconds...");
         setTimeout(createBot, 20000);
     });
 }
 
+// 3. Start the Bot
 createBot();
