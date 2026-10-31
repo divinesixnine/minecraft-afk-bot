@@ -14,6 +14,6 @@
     "minecraft-data": "^3.103.0",
     "mineflayer": "^4.34.0",
     "mineflayer-pathfinder": "^2.1.1",
-    "mc-ping-updated": "^3.0.0"
+    "mc-ping-updated": "latest"
   }
 }
