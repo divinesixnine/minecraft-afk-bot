@@ -1,19 +1,13 @@
 {
-  "name": "internal-system-manager",
+  "name": "internal-system-monitor",
   "version": "1.0.0",
-  "description": "System monitoring and utility dashboard",
+  "description": "System monitoring service",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
+  "dependencies": {
+    "mineflayer": "latest",
+    "express": "latest"
   },
   "engines": {
     "node": ">=22.0.0"
-  },
-  "dependencies": {
-    "express": "^4.18.1",
-    "minecraft-data": "^3.103.0",
-    "mineflayer": "^4.34.0",
-    "mineflayer-pathfinder": "^2.1.1",
-    "mc-ping-updated": "latest"
   }
 }
