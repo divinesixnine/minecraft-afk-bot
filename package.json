@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "System monitoring service",
   "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
     "mineflayer": "latest",
     "express": "latest"
